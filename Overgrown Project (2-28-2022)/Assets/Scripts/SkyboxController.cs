@@ -2,11 +2,21 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SimpleBlend : MonoBehaviour {
+public class SkyboxController : MonoBehaviour {
 
     public SkyboxBlender skyboxBlenderScript;
-    [SerializeField]  public float rotateModifier = (float) 0.5;
-    [SerializeField] [Range(-1,1)] public float blendModifier = (float) 100;
+    public Material DaySkybox;
+    public Material AfternoonSkybox;
+    public Material NightSkybox;
+
+    public Material DayToAfternoonSkybox;
+    public Material AfternoonToNightSkybox;
+    public Material NightToDaySkybox;
+
+
+
+    [SerializeField] public float rotateModifier = (float)0.5; //0.5
+    [SerializeField] public float blendModifier = (float) 0.05; //0.05
 
     // Start is called before the first frame update
     void Start()
@@ -28,4 +38,8 @@ public class SimpleBlend : MonoBehaviour {
             skyboxBlenderScript.rotation = 0;
         }
     }
+
+    //RenderSettings.skybox=mat2;
+
+
 }

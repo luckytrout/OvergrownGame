@@ -1,4 +1,6 @@
 ﻿using System.Collections;
+using System.Linq;
+using System.Text.RegularExpressions;
 //using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -21,7 +23,7 @@ public class GameManager : MonoBehaviour
 
     private bool isSpawning = false;
     private bool notPaused = true;
-    private bool[] buffArray = new bool[3];
+    private bool[] buffArray = new bool[4];
 
     [System.NonSerialized] public PlayerController playerScript;
     
@@ -29,6 +31,8 @@ public class GameManager : MonoBehaviour
     public GameObject rewardButton1;
     public GameObject rewardButton2;
     public GameObject rewardButton3;
+    private bool toggleStatsPanel = false;
+    private State previousState;
 
     public GameObject panelMenu;
     public GameObject panelPlay;
@@ -42,7 +46,7 @@ public class GameManager : MonoBehaviour
     public GameObject panelStatsBattle;
 
 
-    private int enemyCount = 0;
+    [System.NonSerialized] public int enemyCount = 0;
 
     public static GameManager Instance { get; private set; }
 
@@ -54,6 +58,7 @@ public class GameManager : MonoBehaviour
     {
         enemyCount++;
         Vector3 EnemySpawnLocation = GameObject.FindGameObjectWithTag("EnemySpawnLocation").transform.position;
+
         if (!playerScript.isBattling)
         {
             Instantiate(enemyPrefab, EnemySpawnLocation, transform.rotation);
@@ -86,24 +91,61 @@ public class GameManager : MonoBehaviour
 
     public void ClickHelpCreditsExit()
     {
-        panelCredits.SetActive(false);
         panelHelp.SetActive(false);
+        panelCredits.SetActive(false);
         panelMenu.SetActive(true);
     }
 
     public void ClickExitConfirm()
     {
+        previousState = _state;
         SwitchState(State.EXITCONFIRM);
     }
 
-    public void ClickTakeReward()
+    
+
+    public void ClickTakeReward(Button selectedButton)
     {
+        /* Refill Health [0]
+         * Speed = [1]
+         * Attack = [2]
+         * Health = [3]
+         * Defense
+         * Chance to Hit (the enemy)
+         * 
+         * Dodge Chance
+         * 
+         */
+
         panelBattle.SetActive(false);
         playCamera.enabled = (true);
-        /*if (the button pressed == speed/health/damage)
+        string buffText = selectedButton.GetComponentInChildren<Text>().text;
+        int buffIncrease = 0;
+
+        if (buffText.Any(char.IsDigit)) {
+            string resultString = Regex.Match(buffText, @"\d+").Value;
+            buffIncrease = int.Parse(resultString);
+        }
+
+        switch (buffText)
         {
-            (give that buff + "num" to stat)
-        }*/
+            case string a when a.Contains("Refill Health"):
+                battleManager.playerCurrentHP = battleManager.playerMaxHP;
+                battleManager.playerHealthBar.SetCurrentHealth(battleManager.playerMaxHP);
+                break;
+            case string b when b.Contains("Speed"):
+                battleManager.playerSpeed += buffIncrease;
+                break;
+            case string c when c.Contains("Attack"):
+                battleManager.playerDamage += buffIncrease;
+                break;
+            case string d when d.Contains("Health"):
+                battleManager.playerMaxHP += buffIncrease;
+                battleManager.playerCurrentHP += buffIncrease;
+                break;
+        }
+
+        enemyCount--;
         panelReward.SetActive(false);
         SwitchState(State.PLAY, 2, true);
         //Time.timeScale = 1;
@@ -113,35 +155,28 @@ public class GameManager : MonoBehaviour
     public void UpdateStatText(GameObject statsPanel)
     {
         Text myText = statsPanel.GetComponentInChildren<Text>();
-        myText.text = "<b>" + battleManager.playerCurrentHP + "/" + battleManager.playerMaxHP + "\n"
+        myText.text = "<b>" + battleManager.playerLevel + "\n"
+            + battleManager.playerXP + "\n"
+            + battleManager.playerCurrentHP + "/" + battleManager.playerMaxHP + "\n"
             + battleManager.playerDamage + "\n"
-            + battleManager.playerSpeed + "\n</b>" + 0;
+            + battleManager.playerSpeed + "\n"
+            + 0 + "</b>";
+        //+ battleManager defense ;
+    }
+
+    public void UpdateFinalStats(GameObject gameOver_statsPanel)
+    {
+        Text myText = gameOver_statsPanel.GetComponentInChildren<Text>();
+        myText.text = "<b>Level: " + battleManager.playerLevel + "\n"
+            + "Health: " + battleManager.playerMaxHP + "\n"
+            + "Damage: " + battleManager.playerDamage + "\n"
+            + "Speed: " + battleManager.playerSpeed + "\n</b>";
         //+ battleManager defense ;
     }
 
     public void Toggle_Stats(bool toggleOn)
     {
-        if(_state != State.BATTLE)
-        {
-            if(toggleOn == true) {
-                panelStatsOverworld.SetActive(true);
-            }
-            else if(toggleOn == false)
-            {
-                panelStatsOverworld.SetActive(false);
-            }
-            
-        }else if (_state == State.BATTLE)
-        {
-            if (toggleOn == true)
-            {
-                panelStatsBattle.SetActive(true);
-            }
-            else if (toggleOn == false)
-            {
-                panelStatsBattle.SetActive(false);
-            }
-        }
+        toggleStatsPanel = toggleOn;
     }
 
     public void ClickExitYes()
@@ -166,7 +201,16 @@ public class GameManager : MonoBehaviour
     public void ClickExitNo()
     {
         panelExitConfirm.SetActive(false);
-        SwitchState(State.PLAY);
+        if (previousState == State.BATTLE)
+        {
+            SwitchState(State.BATTLE);
+        }
+        else
+        {
+            SwitchState(State.PLAY);
+        }
+
+
     }
 
     //end of click methods
@@ -180,27 +224,33 @@ public class GameManager : MonoBehaviour
          * Refill Health
          * Dodge Chance
          * 
+         * use size of buff array for number of available buffs
          */
-        int num = Random.Range(0, 3);
+        int num = Random.Range(0, buffArray.Length);
         while (buffArray[num] == true)
         {
-            num = Random.Range(0, 3);
+            num = Random.Range(0, buffArray.Length);
         }
 
         switch (num)
         {
             case 0:
-                button.text = "<b>Speed +" + Random.Range(1, 3) + "</b>";
+                button.text = "<b>Refill Health</b>";
                 buffArray[0] = true;
                 break;
             case 1:
-                button.text = "<b>Attack +" + Random.Range(1, 3) + "</b>";
+                button.text = "<b>Speed +" + Random.Range(1, 3) + "</b>";
                 buffArray[1] = true;
                 break;
             case 2:
-                button.text = "<b>Health +" + Random.Range(1, 3) + "</b>";
+                button.text = "<b>Attack +" + Random.Range(1, 4) + "</b>";
                 buffArray[2] = true;
                 break;
+            case 3:
+                button.text = "<b>Health +" + Random.Range(5, 10) + "</b>";
+                buffArray[3] = true;
+                break;
+            
                 /*case 1:
                     break;
                 case 1:
@@ -238,16 +288,15 @@ public class GameManager : MonoBehaviour
         }
 
         _isSwitchingState = true;
+        panelStatsBattle.SetActive(false);
+        panelStatsOverworld.SetActive(false);
         yield return new WaitForSecondsRealtime(delay);
         EndState();
         _state = newState;
         BeginState(newState);
         _isSwitchingState = false;
 
-        //if (hideCursor)
-        //{
-            SetCursorVisible(true);
-        //}
+        SetCursorVisible(true);
     }
 
     void BeginState (State newState)
@@ -288,7 +337,6 @@ public class GameManager : MonoBehaviour
                 panelReward.SetActive(false);
                 panelPlay.SetActive(true);
                 Time.timeScale = 1;
-
                 break;
             case State.EXITCONFIRM:
                 panelExitConfirm.SetActive(true);
@@ -301,8 +349,10 @@ public class GameManager : MonoBehaviour
             case State.BATTLE:
                 //mouseInputDelay(2, true);
                 playCamera.enabled = false;
-                battleManager.BattleTextReset();
                 panelStatsOverworld.SetActive(false);
+                battleManager.playerHealthBar.TextChangeCurrent(battleManager.playerCurrentHP, battleManager.playerMaxHP);
+                battleManager.playerHealthBar.SetMaxHealth(battleManager.playerMaxHP);
+                battleManager.playerHealthBar.SetCurrentHealth(battleManager.playerCurrentHP);
                 battleCamera.enabled = true;
                 Time.timeScale = 0;
                 panelBattle.SetActive(true);
@@ -312,7 +362,7 @@ public class GameManager : MonoBehaviour
                 break;
             case State.REWARD:
                 Time.timeScale = 0;
-                panelPlay.SetActive(false);
+                panelPlay.SetActive(true);
                 Destroy(battleManager.currentEnemy);
                 //Destroy(playerScript.battlingEnemy);
                 playerScript.isBattling = false;
@@ -332,6 +382,7 @@ public class GameManager : MonoBehaviour
                 panelExitConfirm.SetActive(false);
                 panelBattle.SetActive(false);
                 panelGameOver.SetActive(true);
+                UpdateFinalStats(panelGameOver);
                 //panelGameOver.SetActive(true);
                 break;
         }
@@ -358,14 +409,56 @@ public class GameManager : MonoBehaviour
             case State.EXITCONFIRM:
                 break;
             case State.BATTLE:
-                UpdateStatText(panelStatsBattle);
-
+                if (battleManager._battleProcessing)
+                {
+                    SetCursorVisible(false);
+                }
+                else if (!battleManager._battleProcessing)
+                {
+                    SetCursorVisible(true);
+                }
                 break;
             case State.REWARD:
                 break;
             case State.GAMEOVER:
                 break;
         }
+
+        UpdateStatText(panelStatsBattle);
+        UpdateStatText(panelStatsOverworld);
+
+        //toggle stats panel depending on game state
+
+        if (!_isSwitchingState)
+        {
+            if (_state != State.BATTLE)
+            {
+                panelStatsBattle.SetActive(false);
+
+                if (toggleStatsPanel == true)
+                {
+                    panelStatsOverworld.SetActive(true);
+                }
+                else
+                {
+                    panelStatsOverworld.SetActive(false);
+                }
+            }
+            else if (_state == State.BATTLE)
+            {
+                panelStatsOverworld.SetActive(false);
+
+                if (toggleStatsPanel == true)
+                {
+                    panelStatsBattle.SetActive(true);
+                }
+                else
+                {
+                    panelStatsBattle.SetActive(false);
+                }
+            }
+        }
+
     }
 
 
@@ -436,6 +529,11 @@ public class GameManager : MonoBehaviour
                 for (int i = 0; i < buffArray.Length; i++) { 
                     buffArray[i] = false;
                 }
+
+                UpdateStatText(panelStatsOverworld);
+                UpdateStatText(panelStatsBattle);
+                battleManager.BattleTextReset();
+
                 break;
             case State.GAMEOVER:
                 //panelPlay.SetActive(false);

@@ -10,6 +10,7 @@ public class BattleManager : MonoBehaviour
     public GameManager gameManager;
     PlayerController playerScript;
     public GameObject mouseDisable;
+    [System.NonSerialized] public bool _battleProcessing = false;
 
     public int playerCurrentHP;
     public int playerLevel;
@@ -31,6 +32,7 @@ public class BattleManager : MonoBehaviour
     public int enemyMaxHP;
     public int enemyDamage;
     public int enemySpeed;
+    public int enemyXP;
 
     public Text battleText1;
     public Text battleText2;
@@ -66,18 +68,29 @@ public class BattleManager : MonoBehaviour
         mouseDisable.SetActive(disable);
     }
 
-    void delay(float setDelay)
+    void delay(float setDelay, int delayCase)
     //void BattleDelay(float setDelay)
     {
-        
-        StartCoroutine(delayCo(setDelay));
+        switch (delayCase)
+        {
+            case 1: //Attacking
+                StartCoroutine(delayCoAttack(setDelay));
+                break;
+            case 2: //Defending
+                break;
+            case 3: //Fleeing
+                StartCoroutine(delayCoFlee(setDelay));
+                break;
+
+        }
+
         
         //StartCoroutine(AttackDelay(setDelay));
     }
 
-    IEnumerator delayCo(float delay)
+    IEnumerator delayCoAttack(float delay)
     {
-        gameManager.SetCursorVisible(false);
+        _battleProcessing = true;
         
         if (playerSpeed >= enemySpeed) //if player is faster than enemy
         {
@@ -85,6 +98,7 @@ public class BattleManager : MonoBehaviour
             DealDamage(playerDamage);
             if (enemyCurrentHP <= 0)
             {
+                playerXP += enemyXP;
                 yield return new WaitForSecondsRealtime(delay);
                 gameManager.SwitchState(GameManager.State.REWARD);
 
@@ -116,18 +130,61 @@ public class BattleManager : MonoBehaviour
 
                 if (enemyCurrentHP <= 0)
                 {
+                    playerXP += enemyXP;
                     yield return new WaitForSecondsRealtime(delay);
                     gameManager.SwitchState(GameManager.State.REWARD);
 
                 }
             }
         }
-        gameManager.SetCursorVisible(true);
+        //gameManager.SetCursorVisible(true);
+        _battleProcessing = false;
     }
+
+
+    IEnumerator delayCoFlee(float delay)
+    {
+        _battleProcessing = true;
+        //chance to flee stat? speed? evasion?
+        int chanceToFlee = Random.Range(1, 11); //1-10 - - 11 excluded
+        yield return new WaitForSecondsRealtime(delay);
+        if (chanceToFlee <= 7) //70% chance to flee 8/10
+        {
+            Destroy(currentEnemy);
+            playerScript.isBattling = false;
+            playerScript.battlingEnemy = null;
+            currentEnemy = null;
+            gameManager.enemyCount--;
+            gameManager.panelBattle.SetActive(false);
+            gameManager.UpdateStatText(gameManager.panelStatsOverworld);
+            gameManager.UpdateStatText(gameManager.panelStatsBattle);
+            BattleTextReset();
+            gameManager.SwitchState(GameManager.State.PLAY, 2, true);
+        }
+        else //flee failed, take damage
+        {
+            TakeDamage(enemyDamage);
+            if (playerCurrentHP <= 0)
+            {
+                yield return new WaitForSecondsRealtime(1);
+                gameManager.SwitchState(GameManager.State.GAMEOVER);
+            }
+        }
+
+        _battleProcessing = false;
+    }
+
 
     public void ClickAttack()
     {
-        delay(1);
+        delay(1, 1);
+    }
+
+    //Defend Click
+
+    public void ClickToFlee()
+    {
+        delay(1, 3);
     }
 
     public void ResetStats()
@@ -173,6 +230,7 @@ public class BattleManager : MonoBehaviour
         enemyMaxHP = enemyStats.enemyMaxHP;
         enemyDamage = enemyStats.enemyDamage;
         enemySpeed = enemyStats.enemySpeed;
+        enemyXP = enemyStats.enemyLevel * Random.Range(5,10);
         enemyHealthBar.SetDefaultHealth(enemyCurrentHP);
 
     }
@@ -240,9 +298,7 @@ public class BattleManager : MonoBehaviour
                 playerScript.battlingEnemy = null;
             }
         }
-
         //UpdateEnemyClone(enemyStats);
-
     }
 
 
