@@ -1,11 +1,12 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class EnemyHealthBar : MonoBehaviour
 {
 
     public Slider enemySlider;
-    public Text enemyHealthText;
+    public TMP_Text enemyHealthText;
 
     public void SetDefaultHealth(int maxHealth)
     {

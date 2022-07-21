@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using TMPro;
 
 public class GameManager : MonoBehaviour
 {
@@ -12,7 +13,8 @@ public class GameManager : MonoBehaviour
     public GameObject enemyPrefab;
     public GameObject planet;
     public GameObject mouseDisable;
-    //public Animator transition;
+    public Animator transition;
+    public bool battlingTransition = false;
     public BattleManager battleManager;
 
     public Camera menuCamera;
@@ -119,7 +121,9 @@ public class GameManager : MonoBehaviour
 
         panelBattle.SetActive(false);
         playCamera.enabled = (true);
-        string buffText = selectedButton.GetComponentInChildren<Text>().text;
+        TMP_Text myText;
+        myText = selectedButton.GetComponentInChildren<TMP_Text>();
+        string buffText = myText.text;
         int buffIncrease = 0;
 
         if (buffText.Any(char.IsDigit)) {
@@ -154,7 +158,8 @@ public class GameManager : MonoBehaviour
 
     public void UpdateStatText(GameObject statsPanel)
     {
-        Text myText = statsPanel.GetComponentInChildren<Text>();
+        TMP_Text myText;
+        myText = statsPanel.GetComponentInChildren<TMP_Text>();
         myText.text = "<b>" + battleManager.playerLevel + "\n"
             + battleManager.playerXP + "\n"
             + battleManager.playerCurrentHP + "/" + battleManager.playerMaxHP + "\n"
@@ -166,7 +171,8 @@ public class GameManager : MonoBehaviour
 
     public void UpdateFinalStats(GameObject gameOver_statsPanel)
     {
-        Text myText = gameOver_statsPanel.GetComponentInChildren<Text>();
+        TMP_Text myText;
+        myText = gameOver_statsPanel.GetComponentInChildren<TMP_Text>();
         myText.text = "<b>Level: " + battleManager.playerLevel + "\n"
             + "Health: " + battleManager.playerMaxHP + "\n"
             + "Damage: " + battleManager.playerDamage + "\n"
@@ -214,7 +220,7 @@ public class GameManager : MonoBehaviour
     }
 
     //end of click methods
-    public void RandomReward(Text button)
+    public void RandomReward(TMP_Text button)
     {
         /* Speed = [0]
          * Attack = [1]
@@ -226,6 +232,7 @@ public class GameManager : MonoBehaviour
          * 
          * use size of buff array for number of available buffs
          */
+
         int num = Random.Range(0, buffArray.Length);
         while (buffArray[num] == true)
         {
@@ -268,7 +275,7 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1;
         menuCamera.enabled = true;
         Instance = this;
-        SwitchState(State.MENU);
+        SwitchState(State.MENU, 2, false);
     }
 
     public void SwitchState(State newState, float delay = 0, bool hideCursor = false)
@@ -280,22 +287,32 @@ public class GameManager : MonoBehaviour
 
     IEnumerator SwitchDelay(State newState, float delay, bool hideCursor)
     {
+        //transitioning = true;
         if (hideCursor)
         {
+            if (!battlingTransition)
+            {
+                transition.SetTrigger("End");
+            }
+            //transition.
             //transition.SetTrigger("Start");
             SetCursorVisible(false);
-
         }
 
         _isSwitchingState = true;
         panelStatsBattle.SetActive(false);
         panelStatsOverworld.SetActive(false);
+
         yield return new WaitForSecondsRealtime(delay);
         EndState();
         _state = newState;
         BeginState(newState);
         _isSwitchingState = false;
 
+        //transitioning = false;
+        if (hideCursor) {
+        transition.SetTrigger("Start");
+        }
         SetCursorVisible(true);
     }
 
@@ -371,9 +388,9 @@ public class GameManager : MonoBehaviour
                 //panelStats.SetActive(false);
                 //panelExitConfirm.SetActive(false);
                 panelBattle.SetActive(false);
-                RandomReward(rewardButton1.GetComponentInChildren<Text>());
-                RandomReward(rewardButton2.GetComponentInChildren<Text>());
-                RandomReward(rewardButton3.GetComponentInChildren<Text>());
+                RandomReward(rewardButton1.GetComponentInChildren<TMP_Text>());
+                RandomReward(rewardButton2.GetComponentInChildren<TMP_Text>());
+                RandomReward(rewardButton3.GetComponentInChildren<TMP_Text>());
                 panelReward.SetActive(true);
                 break;
             case State.GAMEOVER:
@@ -401,8 +418,9 @@ public class GameManager : MonoBehaviour
 
                 if (playerScript.isBattling)
                 {
-                    Time.timeScale = 0;
+                    battlingTransition = true;
                     SwitchState(State.BATTLE, 2, true);
+                    Time.timeScale = 0;
                 }
                 //CameraFollow.target = playerClone.transform;
                 break;
@@ -421,6 +439,7 @@ public class GameManager : MonoBehaviour
             case State.REWARD:
                 break;
             case State.GAMEOVER:
+                toggleStatsPanel = false;
                 break;
         }
 

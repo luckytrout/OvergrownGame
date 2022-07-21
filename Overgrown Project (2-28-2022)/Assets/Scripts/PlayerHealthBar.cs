@@ -1,11 +1,12 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class PlayerHealthBar : MonoBehaviour
 {
 
     public Slider playerSlider;
-    public Text playerHealthText;
+    public TMP_Text playerHealthText;
 
     public void SetDefaultHealth(int maxHealth)
     {
