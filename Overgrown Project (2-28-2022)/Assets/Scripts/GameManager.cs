@@ -34,12 +34,15 @@ public class GameManager : MonoBehaviour
     public GameObject rewardButton2;
     public GameObject rewardButton3;
     private bool toggleStatsPanel = false;
+    public CanvasGroup battleTextGroup;
     private State previousState;
 
     public GameObject panelMenu;
     public GameObject panelPlay;
     public GameObject panelCredits;
     public GameObject panelHelp;
+    public GameObject panelAudioForPlay;
+    public GameObject panelAudioForMenu;
     public GameObject panelExitConfirm;
     public GameObject panelBattle;
     public GameObject panelGameOver;
@@ -52,7 +55,7 @@ public class GameManager : MonoBehaviour
 
     public static GameManager Instance { get; private set; }
 
-    public enum State { MENU, INIT, PLAY, GAMEOVER, EXITCONFIRM, BATTLE , REWARD};
+    public enum State { MENU, INIT, PLAY, GAMEOVER, EXITCONFIRM,AUDIOPAUSE, BATTLE , REWARD};
     State _state;
     private bool _isSwitchingState;
 
@@ -95,6 +98,7 @@ public class GameManager : MonoBehaviour
     {
         panelHelp.SetActive(false);
         panelCredits.SetActive(false);
+        panelAudioForMenu.SetActive(false);
         panelMenu.SetActive(true);
     }
 
@@ -104,7 +108,19 @@ public class GameManager : MonoBehaviour
         SwitchState(State.EXITCONFIRM);
     }
 
-    
+    public void ClickAudioMenu()
+    {
+        panelAudioForMenu.SetActive(true);
+        panelMenu.SetActive(false);
+    }
+
+    public void ClickAudioMenuPause()
+    {
+        previousState = _state;
+        SwitchState(State.AUDIOPAUSE);
+    }
+
+
 
     public void ClickTakeReward(Button selectedButton)
     {
@@ -161,7 +177,7 @@ public class GameManager : MonoBehaviour
         TMP_Text myText;
         myText = statsPanel.GetComponentInChildren<TMP_Text>();
         myText.text = "<b>" + battleManager.playerLevel + "\n"
-            + battleManager.playerXP + "\n"
+            + battleManager.playerCurrentXP + "/" + battleManager.playerXPCap + "\n"
             + battleManager.playerCurrentHP + "/" + battleManager.playerMaxHP + "\n"
             + battleManager.playerDamage + "\n"
             + battleManager.playerSpeed + "\n"
@@ -207,6 +223,7 @@ public class GameManager : MonoBehaviour
     public void ClickExitNo()
     {
         panelExitConfirm.SetActive(false);
+        panelAudioForPlay.SetActive(false);
         if (previousState == State.BATTLE)
         {
             SwitchState(State.BATTLE);
@@ -218,6 +235,7 @@ public class GameManager : MonoBehaviour
 
 
     }
+
 
     //end of click methods
     public void RandomReward(TMP_Text button)
@@ -275,6 +293,7 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1;
         menuCamera.enabled = true;
         Instance = this;
+        battleTextGroup.alpha = 0f;
         SwitchState(State.MENU, 2, false);
     }
 
@@ -363,6 +382,14 @@ public class GameManager : MonoBehaviour
                 }
                 Time.timeScale = 0;
                 break;
+            case State.AUDIOPAUSE:
+                panelAudioForPlay.SetActive(true);
+                if (Time.timeScale == 1)
+                {
+                    notPaused = true;
+                }
+                Time.timeScale = 0;
+                break;
             case State.BATTLE:
                 //mouseInputDelay(2, true);
                 playCamera.enabled = false;
@@ -370,6 +397,7 @@ public class GameManager : MonoBehaviour
                 battleManager.playerHealthBar.TextChangeCurrent(battleManager.playerCurrentHP, battleManager.playerMaxHP);
                 battleManager.playerHealthBar.SetMaxHealth(battleManager.playerMaxHP);
                 battleManager.playerHealthBar.SetCurrentHealth(battleManager.playerCurrentHP);
+                battleTextGroup.alpha = 0f;
                 battleCamera.enabled = true;
                 Time.timeScale = 0;
                 panelBattle.SetActive(true);
@@ -385,6 +413,7 @@ public class GameManager : MonoBehaviour
                 playerScript.isBattling = false;
                 playerScript.battlingEnemy = null;
                 battleManager.currentEnemy = null;
+                battleManager.UpdateXPBar();
                 //panelStats.SetActive(false);
                 //panelExitConfirm.SetActive(false);
                 panelBattle.SetActive(false);
@@ -426,6 +455,8 @@ public class GameManager : MonoBehaviour
                 break;
             case State.EXITCONFIRM:
                 break;
+            case State.AUDIOPAUSE:
+                break;
             case State.BATTLE:
                 if (battleManager._battleProcessing)
                 {
@@ -454,13 +485,16 @@ public class GameManager : MonoBehaviour
             {
                 panelStatsBattle.SetActive(false);
 
-                if (toggleStatsPanel == true)
+                if(_state == State.PLAY)
                 {
-                    panelStatsOverworld.SetActive(true);
-                }
-                else
-                {
-                    panelStatsOverworld.SetActive(false);
+                    if (toggleStatsPanel == true)
+                    {
+                        panelStatsOverworld.SetActive(true);
+                    }
+                    else
+                    {
+                        panelStatsOverworld.SetActive(false);
+                    }
                 }
             }
             else if (_state == State.BATTLE)
@@ -511,6 +545,8 @@ public class GameManager : MonoBehaviour
                 break;
             case State.EXITCONFIRM:
                 break;
+            case State.AUDIOPAUSE:
+                break;
             case State.BATTLE:
                 break;
             case State.REWARD:
@@ -534,6 +570,13 @@ public class GameManager : MonoBehaviour
                 break;
             case State.EXITCONFIRM:
                 panelExitConfirm.SetActive(false);
+                if (notPaused)
+                {
+                    Time.timeScale = 1;
+                }
+                break;
+            case State.AUDIOPAUSE:
+                panelAudioForPlay.SetActive(false);
                 if (notPaused)
                 {
                     Time.timeScale = 1;

@@ -19,8 +19,11 @@ public class EnemyBehavior : MonoBehaviour
         enemyLevel = Random.Range(1, battleManager.playerLevel);
         enemyCurrentHP = 25 + Random.Range(0, battleManager.playerMaxHP/3);
         enemyMaxHP = enemyCurrentHP;
-        enemyDamage = (int)Random.Range((battleManager.playerDamage/2) + 5, battleManager.playerDamage);
+        enemyDamage = (int)Random.Range((battleManager.playerDamage/2), battleManager.playerDamage);
         enemySpeed = 0 + (int)Random.Range(0, (battleManager.playerSpeed + 2)); //0,1,2,3 -->> 1/2 chance for 2 or 3 enemy goes faster
+
+        //exp system, depending on how many values are higher than or equal to the player's, offer additional exp
+        //scale with level and not just player values?
 
     }
 }

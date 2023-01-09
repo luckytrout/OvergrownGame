@@ -7,6 +7,8 @@ public class BattleManager : MonoBehaviour
     //public GameObject mouseDisable;
     public PlayerHealthBar playerHealthBar;
     public EnemyHealthBar enemyHealthBar;
+    public ExperienceBar EXPBar;
+
     public GameManager gameManager;
     PlayerController playerScript;
     public GameObject mouseDisable;
@@ -15,7 +17,8 @@ public class BattleManager : MonoBehaviour
     public int playerCurrentHP;
     public int playerLevel;
     public int playerMaxHP;
-    public int playerXP;
+    public int playerCurrentXP;
+    public int playerXPCap;
     public float playerSpeed;
     public int playerDamage;
 
@@ -48,12 +51,14 @@ public class BattleManager : MonoBehaviour
         playerCurrentHP = 100;
         playerLevel = 1;
         playerMaxHP = 100;
-        playerXP = 0;
+        playerCurrentXP = 0;
+        playerXPCap = 100;
         playerSpeed = 0;
         playerDamage = 10;
 
         playerHealthBar.SetDefaultHealth(playerMaxHP);
         enemyHealthBar.SetDefaultHealth(enemyMaxHP);
+        EXPBar.ResetEXPBar(playerXPCap, playerLevel);
     }
 
     /*public void SetCursorVisible(bool vis)
@@ -77,6 +82,7 @@ public class BattleManager : MonoBehaviour
                 StartCoroutine(delayCoAttack(setDelay));
                 break;
             case 2: //Defending
+                //chance to defend attack? recover health on success
                 break;
             case 3: //Fleeing
                 StartCoroutine(delayCoFlee(setDelay));
@@ -98,7 +104,7 @@ public class BattleManager : MonoBehaviour
             DealDamage(playerDamage);
             if (enemyCurrentHP <= 0)
             {
-                playerXP += enemyXP;
+                playerCurrentXP += enemyXP;
                 yield return new WaitForSecondsRealtime(delay);
                 gameManager.SwitchState(GameManager.State.REWARD);
 
@@ -130,7 +136,7 @@ public class BattleManager : MonoBehaviour
 
                 if (enemyCurrentHP <= 0)
                 {
-                    playerXP += enemyXP;
+                    playerCurrentXP += enemyXP;
                     yield return new WaitForSecondsRealtime(delay);
                     gameManager.SwitchState(GameManager.State.REWARD);
 
@@ -141,14 +147,46 @@ public class BattleManager : MonoBehaviour
         _battleProcessing = false;
     }
 
+    IEnumerator delayCoDefend(float delay)
+    {
+        _battleProcessing = true;
+        //chance to defend? defense to mitigate damage
+        int chanceToDefend = Random.Range(0, 101); //0-100 - - 101 excluded
+        yield return new WaitForSecondsRealtime(delay);
+        if (chanceToDefend <= 50) //50% chance to flee + defense?
+        {
+            BattleTextChange(false, false);
+            battleText4.text = "<b>Player</b> successfully defended.";
+
+            //recover
+
+            BattleTextChange(false, false);
+            battleText4.text = "<b>Player</b> recovered " + 5 + " health.";
+
+
+        }
+        else //defend failed, take damage
+        {
+            BattleTextChange(false, false);
+            battleText4.text = "<b>Player</b> failed to defend.";
+            TakeDamage(enemyDamage);
+            if (playerCurrentHP <= 0)
+            {
+                yield return new WaitForSecondsRealtime(1);
+                gameManager.SwitchState(GameManager.State.GAMEOVER);
+            }
+        }
+
+        _battleProcessing = false;
+    }
 
     IEnumerator delayCoFlee(float delay)
     {
         _battleProcessing = true;
         //chance to flee stat? speed? evasion?
-        int chanceToFlee = Random.Range(1, 11); //1-10 - - 11 excluded
+        int chanceToFlee = Random.Range(0, 101); //0-100 - - 101 excluded
         yield return new WaitForSecondsRealtime(delay);
-        if (chanceToFlee <= 7) //70% chance to flee 8/10
+        if (chanceToFlee <= 50 + playerSpeed) //50% chance to flee + 1% for each speed value //8/10
         {
             Destroy(currentEnemy);
             playerScript.isBattling = false;
@@ -163,6 +201,8 @@ public class BattleManager : MonoBehaviour
         }
         else //flee failed, take damage
         {
+            BattleTextChange(false, false);
+            battleText4.text = "<b>Player</b> failed to flee.";
             TakeDamage(enemyDamage);
             if (playerCurrentHP <= 0)
             {
@@ -176,6 +216,11 @@ public class BattleManager : MonoBehaviour
 
 
     public void ClickAttack()
+    {
+        delay(1, 1);
+    }
+
+    public void ClickDefend()
     {
         delay(1, 1);
     }
@@ -195,7 +240,8 @@ public class BattleManager : MonoBehaviour
         playerCurrentHP = 100;
         playerLevel = 1;
         playerMaxHP = 100;
-        playerXP = 0;
+        playerCurrentXP = 0;
+        playerXPCap = 100;
         playerSpeed = 0;
         playerDamage = 10;
 
@@ -247,6 +293,7 @@ public class BattleManager : MonoBehaviour
 
     public void BattleTextChange(bool playerAttacked, bool enemyAttacked)
     {
+        gameManager.battleTextGroup.alpha = 1f;
         battleText1.text = battleText2.text;
         battleText2.text = battleText3.text;
         battleText3.text = battleText4.text;
@@ -268,6 +315,17 @@ public class BattleManager : MonoBehaviour
         battleText2.text = "";
         battleText3.text = "";
         battleText4.text = "";
+    }
+
+    public void UpdateXPBar()
+    {
+
+        if (playerCurrentXP >= playerXPCap)
+        {
+            EXPBar.ResetEXPBar(playerLevel * 100, playerLevel);
+        }
+
+        EXPBar.SetCurrentEXP(playerCurrentXP);
     }
 
     /*void UpdatePlayerStats ()
@@ -299,6 +357,13 @@ public class BattleManager : MonoBehaviour
             }
         }
         //UpdateEnemyClone(enemyStats);
+
+
+        /*if (playerCurrentXP >= playerXPCap)
+        {
+            //level up
+        }*/
+
     }
 
 
